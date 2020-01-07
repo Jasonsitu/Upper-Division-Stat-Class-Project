@@ -1,0 +1,74 @@
+---
+title: "Jason Situ Hw7"
+output: html_notebook
+---
+```{r}
+Data;
+plot(Data)
+hist(Data, main="");
+acf(Data)
+pacf(Data)
+```
+```{r}
+DataTemp = data.frame(temp = as.numeric(Data), time = as.numeric(time(Data)), 
+    month = factor(cycle(Data)));
+DataTemp
+
+```
+```{R}
+library("TSA")
+McLeod.Li.test(y = Data)$p.values
+```
+```{r}
+sa1 = arima(Data, order = c(1,1,1), seasonal = list(order = c(1,0,1), period = 12))
+
+sa2 = arima(Data, order = c(1,1,1), seasonal = list(order = c(1,1,1), period = 12))
+
+sa3 = arima(Data, order = c(1,0,1), seasonal = list(order = c(1,1,1), period = 12))
+
+AIC(sa1) #best model
+AIC(sa2)
+AIC(sa3)
+
+acf(sa1$residuals)
+pacf(sa1$residuals)
+acf(sa1$residuals^2)
+
+```
+```{r}
+McLeod.Li.test(sa1)$p.values
+```
+
+```{r}
+library(fGarch);
+sa1Garch = garchFit(data = resid(sa1), formula=~garch(1,0), 
+                        include.mean=FALSE, trace=FALSE);
+
+summary(sa1Garch);
+```
+```{R}
+sa2Garch = garchFit(data = resid(sa1), formula=~garch(1,1), 
+                        include.mean=FALSE, trace=FALSE);
+
+summary(sa2Garch);
+```
+```{R}
+sa3Garch = garchFit(data = resid(sa1), formula=~garch(2,2), 
+                        include.mean=FALSE, trace=FALSE);
+
+summary(sa3Garch)
+
+#best model
+```
+```{r}
+sa1pred = predict(sa1, n.ahead=12);
+sa1pred$se
+
+```
+```{r}
+sa3GarchPred = predict(sa3Garch, 12);
+sa3GarchPred$standardDeviation
+```
+```{r}
+sa1pred$se/sqrt(sa1$sigma2)*sa3GarchPred$standardDeviation
+```

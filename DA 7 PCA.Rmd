@@ -1,0 +1,223 @@
+---
+title: "DA7 PCA"
+output:
+  html_document:
+    df_print: paged
+---
+PCA Gender
+```{r, include = FALSE}
+library(ggplot2)
+library(dplyr)
+library(caret)
+```
+```{r}
+my_path = "//Users/jasonsitu/Desktop/"
+
+heart <- read.csv(paste(my_path, "heart.csv", sep = ""))
+heart
+```
+```{r}
+heart2 = as.matrix(heart[,-2])
+heart2 <- apply(heart2, 2, as.numeric)
+
+sex <- heart$sex
+```
+```{r}
+# Data with known Gender
+h_known <- as.matrix(heart[sex != 'DIS',-2])
+h_known <- apply(h_known, 2, as.numeric)
+g_known = sex[sex != 'DIS']
+dim(h_known)
+
+```
+```{r}
+# Data from papers with unknown authors
+h_unknown <- as.matrix(heart[sex != 'DIS',-2])
+h_unknown <- apply(h_unknown, 2, as.numeric)
+dim(h_unknown)
+
+```
+```{r}
+pc = prcomp(h_known, center = TRUE, scale = TRUE)
+pc
+pairs(pc$x[,1:4], col=as.factor(g_known), pch = 19)
+```
+
+Lets rank the variable by PC
+```{r}
+loadingscore= pc$rotation[,1]
+mal= abs(loadingscore)
+ranking = sort(mal,decreasing = TRUE)
+ranking
+```
+
+```{r}
+# Plot first 2 PCs and authors
+ggplot(, aes(x = pc$x[,1], y = pc$x[,2], col = as.factor(sex))) + 
+  geom_point() + xlab("First PC") + 
+  ylab("Second PC") + 
+  scale_colour_discrete(name = "Gender") + stat_ellipse()
+```
+```{r}
+### Classifying unknown documents
+
+pcs_unknown <- predict(pc, h_unknown)
+
+ggplot(,aes(x = pc$x[,1], y = pc$x[,2])) + 
+  geom_point(aes(col = as.factor(g_known))) + 
+  stat_ellipse(aes(col = as.factor(g_known))) +
+  xlab("First PC") + ylab("Second PC") + scale_colour_discrete(name = "Gender") +
+  geom_point(aes(x = pcs_unknown[,1], y = pcs_unknown[,2]), shape = 1)
+```
+
+```{r}
+# K nearest neighbors classification
+library(class)
+k_nearest <- knn(h_known, h_unknown, cl = g_known, k = 1)
+head(k_nearest,15)
+
+k_nearest <- knn(pc$x[,1:2], pcs_unknown[,1:2], cl = g_known, k = 1)
+head(k_nearest,15)
+ggplot(,aes(x = pc$x[,1], y = pc$x[,2])) + 
+  geom_point(aes(col = as.factor(g_known))) + 
+  xlab("First PC") + ylab("Second PC") + scale_colour_discrete(name = "Gender") +
+  geom_point(aes(x = pcs_unknown[,1], y = pcs_unknown[,2], col = as.factor(k_nearest)), shape = 15, size = 2)
+```
+
+PCA Gender: Closest Center + K Nearest Neighbors Classification
+```
+From ranking the PCs and also calculating the magnitude of the loading score, we can conclude that the "target" variable is the best predictor for gender.
+From the pc chart and ggplot, we see that the data is pretty combined and hard to tell which point is which gender, similar results from the LDA graph too. However, I was unable to split the data to test for the accuracy for this model.
+```
+
+PCA Chest Pain: Closest Center + K Nearest Neighbors Classification
+```{r}
+my_path = "//Users/jasonsitu/Desktop/"
+
+heart <- read.csv(paste(my_path, "heart.csv", sep = ""))
+heart
+```
+```{r}
+heart3 = as.matrix(heart[,-3])
+heart3 <- apply(heart3, 2, as.numeric)
+cp <- heart$cp
+```
+```{r}
+pc = prcomp(heart3, center = TRUE, scale = TRUE)
+pc
+pairs(pc$x[,1:4], col=as.factor(cp), pch = 19)
+
+```
+```{r}
+loadingscore= pc$rotation[,1]
+mal= abs(loadingscore)
+ranking = sort(mal,decreasing = TRUE)
+ranking
+```
+```{r}
+# Data with known CP
+h_known <- as.matrix(heart[cp != 'DIS',-3])
+h_known <- apply(h_known, 2, as.numeric)
+cp_known = cp[cp != 'DIS']
+```
+```{r}
+# Data from papers with unknown CP
+h_unknown <- as.matrix(heart[cp != 'DIS',-3])
+h_unknown <- apply(h_unknown, 2, as.numeric)
+
+```
+```{r}
+# Plot first 2 PCs and CP
+ggplot(, aes(x = pc$x[,1], y = pc$x[,2], col = as.factor(cp))) + 
+  geom_point() + xlab("First PC") + 
+  ylab("Second PC") + 
+  scale_colour_discrete(name = "Chest Pain") + stat_ellipse()
+```
+```{r}
+pcs_unknown <- predict(pc, h_unknown)
+# K nearest neighbors classification
+library(class)
+k_nearest <- knn(h_known, h_unknown, cl = cp_known, k = 1)
+head(k_nearest,15)
+
+k_nearest <- knn(pc$x[,1:2], pcs_unknown[,1:2], cl = cp_known, k = 1)
+head(k_nearest,15)
+ggplot(,aes(x = pc$x[,1], y = pc$x[,2])) + 
+  geom_point(aes(col = as.factor(cp_known))) + 
+  xlab("First PC") + ylab("Second PC") + scale_colour_discrete(name = "Chest Pain") +
+  geom_point(aes(x = pcs_unknown[,1], y = pcs_unknown[,2], col = as.factor(k_nearest)), shape = 15, size = 2)
+```
+
+PCA Chest Pain Analysis:
+```
+Once again, I created a ranking list for the variables and the "target" variable was the highest predictor variable.
+The plot of PC1 vs PC2, the ellipse overlap quite a lot which is a problem because it is classifying a lot of the data point multiple times. 
+Just like the previous analysis, I was unable to figure out how to split the data and test the data, hence I wasn't able to test for the accuracy of this model. 
+```
+
+PCA Target variable: Closest Center + K Nearest Neighbors Classification
+```{r}
+my_path = "//Users/jasonsitu/Desktop/"
+
+heart <- read.csv(paste(my_path, "heart.csv", sep = ""))
+heart
+```
+```{r}
+heart4 = as.matrix(heart[,-14])
+heart4 <- apply(heart4, 2, as.numeric)
+t <- heart$target
+
+```
+```{r}
+pc = prcomp(heart4, center = TRUE, scale = TRUE)
+pairs(pc$x[,1:4], col=as.factor(t), pch = 19)
+
+```
+```{r}
+loadingscore= pc$rotation[,1]
+mal= abs(loadingscore)
+ranking = sort(mal,decreasing = TRUE)
+ranking
+```
+```{r}
+# Data with known "target"
+h_known <- as.matrix(heart[t != 'DIS',-14])
+h_known <- apply(h_known, 2, as.numeric)
+t_known = t[t != 'DIS']
+
+```
+```{r}
+# Data from papers with unknown target
+h_unknown <- as.matrix(heart[t != 'DIS',-14])
+h_unknown <- apply(h_unknown, 2, as.numeric)
+
+```
+```{r}
+# Plot first 2 PCs and target
+ggplot(, aes(x = pc$x[,1], y = pc$x[,2], col = as.factor(t))) + 
+  geom_point() + xlab("First PC") + 
+  ylab("Second PC") + 
+  scale_colour_discrete(name = "Target") + stat_ellipse()
+```
+```{r}
+pcs_unknown <- predict(pc, h_unknown)
+# K nearest neighbors classification
+library(class)
+k_nearest <- knn(h_known, h_unknown, cl = t_known, k = 1)
+head(k_nearest,15)
+
+k_nearest <- knn(pc$x[,1:2], pcs_unknown[,1:2], cl = t_known, k = 1)
+head(k_nearest,15)
+ggplot(,aes(x = pc$x[,1], y = pc$x[,2])) + 
+  geom_point(aes(col = as.factor(t_known))) + 
+  xlab("First PC") + ylab("Second PC") + scale_colour_discrete(name = "Target") +
+  geom_point(aes(x = pcs_unknown[,1], y = pcs_unknown[,2], col = as.factor(k_nearest)), shape = 15, size = 2)
+```
+
+
+PCA Target variable Analysis:
+```
+After ranking all the variables, oldpeak is the most signifcant predictor for the "target" variable.
+The plot PC1 vs PC2 above seem very similar to the LDA plot however the LDA plot was more accurate in seperation the variable then PCA .
+As for the accuracy, like the previous two analysis, I couldn't figure out how to split the data, thus unable to test for accuracy of this model. 
+```

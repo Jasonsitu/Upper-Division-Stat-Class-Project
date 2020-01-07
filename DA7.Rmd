@@ -1,0 +1,190 @@
+---
+title: "Da7 LDA"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Linear Discriminant Analysis
+LDA Gender:
+
+Let's upload our dataset into R dataframe.
+```{r, include = FALSE}
+library(dplyr)
+library(ggplot2)
+library(MASS)
+```
+```{r}
+my_path = "//Users/jasonsitu/Desktop/"
+heart <- read.csv(paste(my_path, "heart.csv", sep = ""))
+```
+```{r}
+n1 = sum(heart$sex == 1)
+n2 = sum(heart$sex == 0)
+
+ybar1 <- heart %>% filter(sex == 1) %>% dplyr::select(-sex) %>% colMeans()
+ybar2 <- heart %>% filter(sex == 0) %>% dplyr::select(-sex) %>% colMeans()
+
+S1 <- heart %>% filter(sex == 1) %>% dplyr::select(-sex) %>% cov()
+S2 <- heart %>% filter(sex == 0) %>% dplyr::select(-sex) %>% cov()
+
+Sp <- 1/(n1 + n2 -2)*((n1-1)*S1 + (n2-1)*S2)
+ybar1
+ybar2
+```
+Find the discriminant function by hand:
+
+```{r}
+disc.fun <- t(ybar1 - ybar2) %*% solve(Sp)
+disc.fun
+```
+
+Find the scores of each gender:
+
+```{r} 
+heart5 <- heart %>% dplyr::select(-sex)
+scores <- disc.fun %*% t(as.matrix(heart5))
+
+heart$scores = t(scores)
+heart
+```
+Plot the score of each gender:
+
+
+```{r}
+
+cutoff = .65*(disc.fun %*% (ybar1 + ybar2))
+
+ggplot(heart, aes(x = 1:nrow(heart), y = scores, col = factor(sex))) + geom_point() + geom_hline(aes(yintercept = cutoff))
+
+```
+```{r}
+n12 <- sum(heart$scores < as.numeric(cutoff) & heart$sex == 1)
+n21 <- sum(heart$scores > as.numeric(cutoff) & heart$sex == 0)
+
+err.rate <- (n12 + n21)/(n1 + n2)
+
+err.rate
+```
+
+```{r}
+heart2 <- heart %>% dplyr::select(-scores)
+heart2.lda <- lda(sex ~., data = heart2)
+heart2.lda
+
+```
+
+LDA Gender analysis
+```
+From the looks of the graph the difference between gender have very little difference in term of scores and also from the histogram above, we can argue that the distrubition of Sex label "1" is above 0 and "0" is below 0. However this isn't really a judgement because the population between the two groups are 31% and 68% respectively. Uneven population could factor in increase error rate.
+The discrim function biggest coefficient is the "target" variable, thus I would have to say that's the health factor that best differentiate genders is the "target variable". However the error rate is pretty high using LDA, using a cutoff of .65, we get an error rate of 27.5%, which is pretty high. 
+```
+----------------------------------------------------------------------------------
+LDA Chest Pain
+```{r}
+my_path = "//Users/jasonsitu/Desktop/"
+
+heart <- read.csv(paste(my_path, "heart.csv", sep = ""))
+heart
+```
+
+```{r}
+heart.lda <- lda(cp ~., data = heart)
+heart.lda
+h7= t(as.matrix(heart.lda$scaling))
+
+```
+
+```{r}
+n1 = sum(heart$cp == 0)
+n2 = sum(heart$cp == 1)
+n3 = sum(heart$cp == 2)
+n4 = sum(heart$cp == 3)
+
+ybar1 <- heart %>% filter(cp == 0) %>% dplyr::select(-cp) %>% colMeans()
+ybar2 <- heart %>% filter(cp == 1) %>% dplyr::select(-cp) %>% colMeans()
+ybar3 <- heart %>% filter(cp == 2) %>% dplyr::select(-cp) %>% colMeans()
+ybar4 <- heart %>% filter(cp == 3) %>% dplyr::select(-cp) %>% colMeans()
+
+S1 <- heart %>% filter(cp== 0) %>% dplyr::select(-cp) %>% cov()
+S2 <- heart %>% filter(cp == 1) %>% dplyr::select(-cp) %>% cov()
+S3 <- heart %>% filter(cp == 2) %>% dplyr::select(-cp) %>% cov()
+S4 <- heart %>% filter(cp == 3) %>% dplyr::select(-cp) %>% cov()
+
+Sp <- 1/(n1 + n2 + n3 + n4 -4)*((n1-1)*S1 + (n2-1)*S2 + (n3-1)*S3 + (n4-1)*S4)
+
+```
+Find the discriminant function
+
+```{r}
+disc.fun <- h7
+fun= as.matrix(disc.fun)
+fun
+```
+
+Find the scores of each CP:
+```{r} 
+heart.lda.values <- predict(heart.lda)
+
+newdata <- data.frame(type = heart[,1], lda = heart.lda.values$x)
+
+library(ggplot2)
+ggplot(newdata) + geom_point(aes(lda.LD1, lda.LD2, colour = type), size = 2.5)
+```
+```{r}
+n12 <- sum(heart$scores < as.numeric(cutoff) & heart$target == 1)
+n21 <- sum(heart$scores > as.numeric(cutoff) & heart$target == 0)
+
+err.rate <- (n12 + n21)/(n1 + n2)
+err.rate
+```
+
+```
+Not sure how accurate is the coding for this problem because I had difficulties with 3 LDA functions,or I am missing something. Despite from that, I want to analyze the lda chart from the lda function.
+The proportion of each cp variable is unequal, 0.4719, 0.1650, 0.2871, and 0.0759 respectively.
+We also see that the first LDA function has a 82% variation of the data and 13.5% for second LDA function. From taking the absolute values of the sum of each variable, I conclude that the "target" variable is the best predictor as it has the highest absolute sum of all 3 LDA function. For the error rate, I was unable to find the proper coding for, thus unable to provide an accurate answer.
+```
+------------------------------------------------------------------------
+LDA target variable
+```{r}
+my_path = "//Users/jasonsitu/Desktop/"
+
+heart <- read.csv(paste(my_path, "heart.csv", sep = ""))
+```
+```{r}
+heart.lda <- lda(target ~., data = heart)
+heart.lda
+h10= t(as.matrix(heart.lda$scaling))
+```
+```{r} 
+n1 = sum(heart$target == 1)
+n2 = sum(heart$target == 0)
+
+
+ybar1 <- heart %>% filter(target == 1) %>% dplyr::select(-target) %>% colMeans()
+ybar2 <- heart %>% filter(target == 0) %>% dplyr::select(-target) %>% colMeans()
+
+disc.fun = h10
+heart3 <- heart %>% dplyr::select(-target)
+scores <- disc.fun %*% t(as.matrix(heart3))
+heart$scores = t(scores)
+```
+
+```{r} 
+cutoff = .5*(disc.fun %*% (ybar1 + ybar2))
+
+ggplot(heart, aes(x = 1:nrow(heart), y = scores, col = factor(target))) + geom_point() + geom_hline(aes(yintercept = cutoff))
+```
+```{r}
+n12 <- sum(heart$scores < as.numeric(cutoff) & heart$target == 1)
+n21 <- sum(heart$scores > as.numeric(cutoff) & heart$target == 0)
+
+err.rate <- (n12 + n21)/(n1 + n2)
+err.rate
+
+```
+LDA Target variable Analysis
+```
+From the LDA function, we see that the highest coefficient is gender but that isn't really a health factor so exang comes in second, so we can conclude that exang is the best predictor for the"target" variable.
+We also see that the proportion of each population is fairly equal which is a good sign. By using a .5 cutoff, we were able to get an error rate of 15.5%, which is alright but not the best. However, by just looking at the ggplot, we see a pattern of seperation and that the serperation of the group is at the half way point of the data. So it might be some chronological order type of variable. 
+```

@@ -1,0 +1,240 @@
+---
+title: 'Lab 8: Quarter Review + Clustering'
+author: "Jason Situ"
+output:
+  html_document: default
+---
+
+```{r, include = FALSE}
+#### IGNORE THIS
+options(digits=3)
+##knitr::opts_chunk$set(fig.width=4, fig.height=4) 
+library(MASS)
+library(tidyverse)
+library(heplots)
+library(dplyr)
+
+```
+
+# Dataset: Exoplanet Data
+
+Today's dataset comes from a NASA database of all known exoplanets.
+
+```{r}
+planets <- read.csv("https://www.dropbox.com/s/2izv8xz6n22hnae/planets2.csv?dl=1")
+
+```
+
+The variables in this dataset are:
+
+```
+pl_name:  The name of the planet
+pl_hostname: The Solar System of the planet
+pl_pnum: The number of planets in the same Solar System
+pl_orbper: The orbital period in days
+pl_orbsmax: The semi-major axis of orbit
+pl_orbeccen: The eccentricity of the orbit
+pl_orbincl:  The angle of incline of the orbit
+pl_bmassj: The mass of the planet
+pl_radj: The radius of the planet 
+pl_dens: The density of the planet
+pl_disc: The year of discovery
+pl_discmethod: The method of discovery
+pl_facility:  The lab that discovered the planet
+pl_locale: Whether the planet was discovered from the ground or from space.
+```
+
+Throughout this DA, you may use any built-in R functions you like, rather than calculating quantities from scratch.
+
+## Planet Orbit vs. Size
+
+
+We might consider grouping these measurements into those that pertain to the size of the planet, and those that pertain to the orbit qualities of the planet, as follows:
+
+```{r}
+planet_orbit <- c("pl_orbper", "pl_orbsmax", "pl_orbeccen", "pl_orbincl")
+planet_sizes <- c("pl_bmassj", "pl_radj", "pl_dens")
+
+S_1 = planets %>% dplyr::select(planet_sizes) %>% cov()
+S_2 = planets %>% dplyr::select(planet_orbit) %>% cov()
+S = planets %>% dplyr::select(planet_sizes, planet_orbit) %>% cov()
+U = det(S)/(det(S_1)*det(S_2))
+U
+```
+
+Answer the following questions by performing a hypothesis test.  For questions where you do not have the tools to calculate a p-value, you do not need to do so.  However, you should still state a null and alternate hypothesis, calculate a test statistic, and justify your choice to reject or fail to reject the null based on  a discussion of the test statistic.
+
+#### Q1:  Is the orbit of a planet is related to its size?
+Ho: E= E
+Ha: S = S1 * S2
+We reject our null hypothesis since our calculation is closer to 1 than 0.
+Since our calculation is closer to 1 than 0, we can conclude that there is is probably no relationship between the orbit of the planet and size. 
+
+
+Now let's calculate the for independence
+```{r}
+S_2
+u = det(S_2)/(1349^2 + .016^2 + .019^2 + 5.59^2)
+u
+```
+
+#### Q2:  Are the four measures of orbit independent?
+Ho: E = E
+Ho: S = s1 x s2 x s3  xs4
+After calculating for indepedences, we get a value of .00 so we reject our null hypothesis and we can conclude that the measure of orbits are not indepedent. 
+
+
+```{r}
+S_1
+u = det(S_1)/(6.817^2 + .191^2 + 9.522^2)
+u
+```
+#### Q3:  Are the three measures of planet size independent?
+```
+Ho: E=E
+Ha: S = s1 x s2 x s3
+We get a score of .029, so we reject our null hypothesis and conclude we can conclude that the measure of planet size are not independent.
+```
+
+***
+
+## Discovery of planets by facility
+
+Now consider the variable `pl_facility`, which gives the research station from which the exoplanet was first discovered.  The most prolific facilities were Kepler (62), HATSouth (40), and SuperWASP (36).  Consider only these facilities. (Code to narrow down the data is provided for you.)
+
+#### Q1:  Is there evidence that the three most prolific facilities tend to discover different types of planets, as measured by size and orbit?
+
+Be sure to state your hypotheses, report a test statistic, give a conclusion, and state and discuss your assumptions.  
+
+```{r}
+
+planets_sub = planets %>% filter(pl_facility %in% c("Kepler", "HATSouth", "SuperWASP") )
+m =manova(cbind(pl_orbper, pl_orbsmax, pl_orbeccen, pl_orbincl, pl_bmassj, pl_radj, pl_dens)
+~ factor(pl_facility), data = planets_sub)
+summary(m, test = "Wilks")
+
+boxM(cbind(pl_orbper, pl_orbsmax, pl_orbeccen, pl_orbincl, pl_bmassj, pl_radj, pl_dens) ~ factor
+(pl_facility), data = planets_sub)
+```
+
+```
+Ho: U1 = U2 = U3
+Ha: Aleast one isn't the same
+
+From the Box M test with a p value of .00, we can conclude that we reject the null hypothesis and conclude that aleast one facilities tend to discover different type of planets.
+```
+
+#### Q2:  For which planet qualities are the discovering facilities most different?  
+
+Support your answer numerically.
+
+```{r}
+
+planet_data = planets[,c(planet_orbit, planet_sizes)]
+
+lin.disc = lda(planet_data, factor(planets$pl_facility))
+sds = apply(planet_data, 2, sd)
+first.std.disc = lin.disc$scaling[,1]*sds
+first.std.disc
+
+
+```
+```
+From the calculation, we see that the semi-major axis of orbit and orbital period in days are the most different among the facilties.
+```
+***
+## Discovery location
+
+Suppose we wish to study whether different types of planets were more likely to be discovered from the ground versus from space (`pl_locale`.
+
+```{r}
+planet_data = planets[,c(planet_orbit, planet_sizes)]
+
+planets_ground = planets %>% filter(pl_locale == "Ground") %>% dplyr::select(planet_orbit, planet_sizes)
+
+planets_space = planets %>% filter(pl_locale == "Space") %>% dplyr::select(planet_orbit, planet_sizes)
+```
+
+#### Q1: Which variables most explain the difference between planets discovered on the ground versus in space?
+```{r}
+ybar1 = colMeans(planets_ground)
+ybar2 = colMeans(planets_space)
+S1 = cov(planets_ground)
+S2 = cov(planets_space)
+n1 = nrow(planets_ground)
+n2 = nrow(planets_space)
+Sp = 1/(n1+n2-2)*((n1-1)*S1 + (n2-1)*S2)
+lin.disc.2 = solve(Sp) %*% (ybar1 - ybar2)
+sds = apply(planet_data, 2, sd)
+sds
+std.disc = lin.disc.2*sds
+std.disc
+```
+```
+From the calculaton above, we see that again the orbital period in days and semi-major axis of orbit have the most difference when comparing planets discovered on the ground vs in space.
+```
+#### Q2:  Do you think the following planet is more likely to have been discovered from the ground or from space?  Why?
+
+```{r}
+new_planet = c(10.8, 0.09, 0.08, 86.5, 1.3, 0.72, 1.4)
+score = t(lin.disc.2) %*% new_planet
+g = t(lin.disc.2) %*% ybar1
+s = t(lin.disc.2) %*% ybar2
+g
+s
+score
+```
+```
+Since our calculation closer to the mean of the space data, we would have to say the new planets was discovered from space. 
+```
+
+***
+## Clustering
+
+Suppose we now wish to group our planets according to their orbitals and sizes, and see how well this groups planets by their location of discovery.
+
+
+#### Q1:  Perform hierarchical clustering on the data, and plot the dendrogram.  Label the observations by your choice of factor variable (hostname, pnum, disc, facility, discmethod, or locale). How well does this unsupervised clustering line up with the groups of the factor variable?
+```{r}
+hier = hclust(dist(planets))
+plot(hier, label = planets$pl_local)
+
+```
+```
+Using pl_local(location of discovery), the dendrogram isn't really a good visual help and hard to tell the clusters apart. 
+```
+
+#### Q2:  Perform a k-means clustering on your choice of Principal Components of the data, with k = 2.  Discuss how well the unsupervised clustering separated planets by their location of discovery.
+
+
+```{r}
+pca = prcomp(planet_data, center = TRUE, scale = TRUE)
+pca
+vars_transformed <- apply(pca$x, 2, var)
+vars_transformed
+vars_transformed/sum(vars_transformed)
+```
+```
+We can see that PC1 and PC2 give us a 35% variation and 23% variation respectively and if we include PC3, we would get around a 75% variation.
+```
+```{r}
+ggplot(, aes(x = pca$x[,1], y = pca$x[,2], col = planets$pl_locale)) +
+geom_point() + xlab("First PC") +
+ylab("Second PC")
+
+```
+
+```{r}
+km = kmeans(pca$x[,1:4], centers = 2)
+planets$pl_locale[km$cluster == 1]
+planets$pl_locale[km$cluster == 2]
+
+```
+```
+Our model isn't too bad, the first cluster have less than a 10% error rate while the second cluster have something in around 15% error rate from just eyeing it. 
+```
+```{r}
+km
+```
+
+

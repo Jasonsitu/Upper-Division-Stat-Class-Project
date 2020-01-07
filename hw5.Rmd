@@ -1,0 +1,109 @@
+---
+title: "hw #5"
+output: html_notebook
+---
+
+```{r}
+w = rnorm(500, sd = 2);
+x1 = w;
+x2 = w;
+for(t in 2:500)
+{
+    x1[t] = w[t] + (1/2)*w[t-1];
+    x2[t] = w[t] + 2*w[t-1];
+}
+par(mfrow=c(2,1));
+plot(x1,type = "l")
+plot(x2,type = "l")
+par(mfrow=c(1,1));
+
+```
+```{r}
+
+acf(x1)
+acf(x2)
+```
+```
+a) ARMA(2,1) station, inver
+b)ARMA(2,0), non station, inver
+c)ARMA(2,2) NS, Inver
+d)ARMA(2,1) non station, non inv,
+e)ARMA(2,1) station, non inv
+f)ARMA(2,2) non station, inv
+```
+```{r}
+library(TSA);
+data(airmiles);
+x= airmiles
+mean(x);
+median(x);
+sd(x);
+plot(x)
+hist(x, main="");
+```
+```{r}
+acf(x)
+pacf(x, ylim=c(-1,1))
+```
+```{r}
+D = data.frame(airmiles = as.numeric(airmiles), time = as.numeric(time(airmiles)), 
+    month = factor(cycle(airmiles)));
+
+library(nlme);
+m1 = gls(airmiles~time+month, data=D);
+summary(m1);
+AIC(m1)
+```
+```{R}
+acf(m1$resid)
+pacf(m1$resid)
+```
+```{R}
+Ar1 = arima(resid(m1), order=c(2,0,2), include.mean=FALSE);
+Ar1;
+```
+```{R}
+
+aicScores = NULL;
+for(arItor in 1:6)
+{
+    for(maItor in 1:6)
+    {
+
+        aicScores = rbind(aicScores, c(arItor, maItor, 
+        AIC(arima(resid(m1), order=c(arItor, 0, maItor), include.mean=FALSE))));
+    }
+}
+aicScores;
+
+```
+```
+6,3
+```
+```{r}
+m2 = gls(airmiles~time+month, data=D, correlation=corAR1(coef(Ar1)));
+summary(m2);
+AIC(m2)
+```
+```{r}
+acf(airmiles)
+pacf(airmiles)
+acf(m1$residuals)
+pacf(m1$residuals)
+acf(m2$residuals)
+pacf(m2$residuals)
+```
+```{r}
+newData = data.frame(time=seq(2005, 2005+11/12, length.out=12), 
+                     month = factor(1:12))
+    
+m2Pred = predict(m2, newData);
+
+plot(airmiles~time, data=D, type="l", xlim=c(1996, 2006), col="blue", xlab="", ylab="", 
+  main="Airmiles");
+points(D$time, fitted(m2), type="l", col="orange");
+points(newData$time, m2Pred, type="l", col="red")
+legend("topleft", c("Observed", "Fitted", "Predicted"), lty=c(1,1,1), col=c("blue", "orange", "red"));
+
+#I named D for the airmiles dataframe
+```

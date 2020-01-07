@@ -1,0 +1,101 @@
+---
+title: "Hw #6 "
+output: html_notebook
+---
+
+
+```{r}
+my_path = "//Users/jasonsitu/Desktop/"
+
+os <- read.delim(paste(my_path, "osvisit.dat", sep = ""))
+class(os)
+os = ts(os)
+plot(os,type = "l")
+acf(os)
+pacf(os)
+```
+```{r}
+library(forecast);
+arima1 = Arima(os, order=c(1,1,0), include.mean= TRUE);
+arima1;
+acf(arima1$residuals)
+pacf(arima1$residuals)
+```
+```{r}
+sarima = Arima(os, order = c(1,1,0), seasonal = list(order = c(0,1,0), period = 12), include.mean= TRUE)
+sarima
+
+acf(sarima$residuals)
+pacf(sarima$residuals)
+```
+```{r}
+sa1 = Arima(os, order = c(1,1,0), seasonal = list(order = c(1,1,0), period = 12), include.mean= TRUE, include.drift = FALSE)
+
+sa2 = Arima(os, order = c(0,1,1), seasonal = list(order = c(0,1,1), period = 12), include.mean= TRUE)
+
+sa3 = Arima(os, order = c(1,1,0), seasonal = list(order = c(0,1,1), period = 12), include.mean= TRUE)
+
+
+sa4 = Arima(os, order = c(0,1,1), seasonal = list(order = c(1,1,0), period = 12), include.mean= TRUE)
+sa4;
+
+
+sa5 = Arima(os, order = c(1,1,1), seasonal = list(order = c(1,1,1), period = 12), include.mean= TRUE)
+
+
+
+sa6 = Arima(os, order = c(1,1,1), seasonal = list(order = c(1,1,0), period = 12), include.mean= TRUE)
+
+
+
+sa7 = Arima(os, order = c(1,1,1), seasonal = list(order = c(0,1,1), period = 12), include.mean= TRUE)
+
+sa8 = Arima(os, order = c(1,1,0), seasonal = list(order = c(0,0,0), period = 12), include.mean= TRUE)
+
+sa9 = Arima(os, order = c(1,1,0), seasonal = list(order = c(0,1,0), period = 12), include.mean= TRUE)
+
+AIC(sa1)
+AIC(sa2)
+AIC(sa3)
+AIC(sa4)
+AIC(sa5)
+AIC(sa6)
+AIC(sa7)
+AIC(sa8)
+AIC(sa9)
+```
+```{r}
+sa7 = Arima(os, order = c(1,1,1), seasonal = list(order = c(0,1,1), period = 12), include.mean= TRUE)
+sa7;
+acf(sa7$residuals)
+pacf(sa7$residuals)
+```
+
+```{r}
+plot(sa7$residuals)
+t.test(sa7$residuals)
+```
+```{r}
+library("tseries")
+Box.test(sa7$residuals,lag = 6)
+```
+
+```{r}
+adf.test(sa7$residuals, k = 1)
+```
+```{r}
+sa7pred = predict(sa7, n.ahead= 12)
+sa7pred
+```
+```{r}
+
+plot(os, xlim=c(13, 24))
+points(1:227, fitted(sa7), type="l", col="orange");
+points(228:239, sa7pred$pred, type="l", col="red");
+```
+
+```{r}
+
+
+
+```
